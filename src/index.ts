@@ -1,5 +1,5 @@
 import express from "express";
-import { handlerFileserverHits, handlerReadiness, handlerReset, handlerValidate } from "./api.js";
+import { handlerCreateUser, handlerFileserverHits, handlerReadiness, handlerReset, handlerValidate } from "./api.js";
 import { middlewareLogResponses } from "./middleware.js";
 import { middlewareErrorHandler } from "./errors.js";
 import { config, middlewareMetricsInc } from "./config.js";
@@ -19,6 +19,7 @@ app.get("/api/healthz", handlerReadiness);
 app.get("/admin/metrics", handlerFileserverHits);
 app.post("/admin/reset", handlerReset);
 app.post("/api/validate_chirp", handlerValidate);
+app.post("/api/users", handlerCreateUser);
 
 app.use("/app", express.static("./src/app"));
 app.use(middlewareLogResponses);

@@ -1,7 +1,8 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { config } from "./config.js";
-import { BadRequestError } from "./errors.js"
-import { validateHeaderName } from "node:http";
+import { BadRequestError, ForbiddenError } from "./errors.js"
+import { createUser, deleteUsers } from "./db/queries/users.js";
+import { type NewUser } from "./db/schema.js";
 
 export async function handlerReadiness(req: Request, res: Response): Promise<void> {
     res.set({
@@ -23,7 +24,13 @@ export async function handlerFileserverHits(req: Request, res: Response): Promis
 }
 
 export async function handlerReset(req: Request, res: Response): Promise<void> {
+    if (config.api.platform !== "dev") {
+        throw new ForbiddenError("Cannot reset outside of dev");
+    };
     config.api.fileserverHits = 0;
+    const deletedUsers = await deleteUsers();
+    console.log("deleted the following users:");
+    console.log(deletedUsers);
     res.send(`Hits: ${config.api.fileserverHits}`);
 }
 
@@ -54,4 +61,25 @@ export async function handlerValidate(req: Request, res: Response) {
     }
     res.header("Content-Type", "application/json");
     res.status(200).send(JSON.stringify(respBody));
+}
+
+export async function handlerCreateUser(req: Request, res: Response, next: NextFunction) {
+    const parsedBody = req.body;
+
+    if (!parsedBody || typeof parsedBody.email !== "string") {
+        throw new BadRequestError("Invalid JSON");
+    };
+    if (!parsedBody.email) {
+        throw new BadRequestError("Email required for new user creation");
+    };
+    try {
+        const newUser: NewUser = {
+            email: parsedBody.email
+        };
+        const respBody = await createUser(newUser);
+        res.header("Content-Type", "application/json");
+        res.status(201).send(JSON.stringify(respBody));
+    } catch (err) {
+        next(err);
+    }
 }
