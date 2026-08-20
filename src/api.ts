@@ -2,7 +2,8 @@ import { NextFunction, Request, Response } from "express";
 import { config } from "./config.js";
 import { BadRequestError, ForbiddenError } from "./errors.js"
 import { createUser, deleteUsers } from "./db/queries/users.js";
-import { type NewUser } from "./db/schema.js";
+import { createChirp } from "./db/queries/chirps.js";
+import { NewUser, NewChirp, Chirp } from "./db/schema.js";
 
 export async function handlerReadiness(req: Request, res: Response): Promise<void> {
     res.set({
@@ -34,33 +35,32 @@ export async function handlerReset(req: Request, res: Response): Promise<void> {
     res.send(`Hits: ${config.api.fileserverHits}`);
 }
 
-export async function handlerValidate(req: Request, res: Response) {
-    type validResponse = {
-        "cleanedBody": string;
-    };
-
+export async function handlerChirp(req: Request, res: Response) {
     const profaneList = ["kerfuffle", "sharbert", "fornax"];
     
-    const parsedBody = req.body;
+    const parsedChirp = req.body;
     
-    if (!parsedBody || typeof parsedBody.body !== "string") {
+    if (!parsedChirp || typeof parsedChirp.body !== "string" || typeof parsedChirp.userId !== "string") {
         throw new BadRequestError("Invalid JSON");
     };
-    if (parsedBody.body.length > 140) {
+    if (parsedChirp.body.length > 140) {
         throw new BadRequestError("Chirp is too long. Max length is 140");
     }; 
-    const splitBody = parsedBody.body.split(" ");
-    splitBody.forEach((word: string, index: number) => {
+    const splitChirp = parsedChirp.body.split(" ");
+    splitChirp.forEach((word: string, index: number) => {
         if (profaneList.includes(word.toLowerCase())) {
-            splitBody[index] = "****";
+            splitChirp[index] = "****";
         };
     })
-    const newBody = splitBody.join(" ");
-    const respBody: validResponse = {
-        "cleanedBody": newBody
+    const newChirp = splitChirp.join(" ");
+    const chirp: NewChirp = {
+        "body": newChirp,
+        "userId": parsedChirp.userId
     }
+
+    const respBody = await createChirp(chirp);
     res.header("Content-Type", "application/json");
-    res.status(200).send(JSON.stringify(respBody));
+    res.status(201).send(JSON.stringify(respBody));
 }
 
 export async function handlerCreateUser(req: Request, res: Response, next: NextFunction) {

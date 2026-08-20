@@ -8,6 +8,13 @@
       "when": 1786328580555,
       "tag": "0000_outstanding_groot",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787192274868,
+      "tag": "0001_fresh_hitman",
+      "breakpoints": true
     }
   ]
 }
