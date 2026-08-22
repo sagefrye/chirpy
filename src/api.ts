@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { config } from "./config.js";
 import { BadRequestError, ForbiddenError } from "./errors.js"
 import { createUser, deleteUsers } from "./db/queries/users.js";
-import { createChirp } from "./db/queries/chirps.js";
+import { createChirp, getChirps } from "./db/queries/chirps.js";
 import { NewUser, NewChirp, Chirp } from "./db/schema.js";
 
 export async function handlerReadiness(req: Request, res: Response): Promise<void> {
@@ -82,4 +82,10 @@ export async function handlerCreateUser(req: Request, res: Response, next: NextF
     } catch (err) {
         next(err);
     }
+}
+
+export async function handlerGetChirps(req: Request, res: Response, next: NextFunction) {
+    const respBody = await getChirps();
+    res.header("Content-Type", "application/json");
+    res.status(200).send(JSON.stringify(respBody));
 }
