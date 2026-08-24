@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import { config } from "./config.js";
-import { BadRequestError, ForbiddenError } from "./errors.js"
+import { BadRequestError, ForbiddenError, NotFoundError } from "./errors.js"
 import { createUser, deleteUsers } from "./db/queries/users.js";
-import { createChirp, getChirps } from "./db/queries/chirps.js";
+import { createChirp, getChirps, getChirp } from "./db/queries/chirps.js";
 import { NewUser, NewChirp, Chirp } from "./db/schema.js";
 
 export async function handlerReadiness(req: Request, res: Response): Promise<void> {
@@ -86,6 +86,20 @@ export async function handlerCreateUser(req: Request, res: Response, next: NextF
 
 export async function handlerGetChirps(req: Request, res: Response, next: NextFunction) {
     const respBody = await getChirps();
+    res.header("Content-Type", "application/json");
+    res.status(200).send(JSON.stringify(respBody));
+}
+
+export async function handlerGetChirp(req: Request, res: Response, next: NextFunction) {
+    if (Array.isArray(req.params.chirpId)) {
+        throw new BadRequestError("chirpId param can only be one value");
+    }
+    
+    const chirpId: string = req.params.chirpId;
+    const respBody: Chirp = await getChirp(chirpId)
+    if (!respBody) {
+        throw new NotFoundError("chirp not found");
+    }
     res.header("Content-Type", "application/json");
     res.status(200).send(JSON.stringify(respBody));
 }

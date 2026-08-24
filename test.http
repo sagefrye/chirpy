@@ -4,11 +4,12 @@ POST http://localhost:8080/admin/reset
 ###
 // Test valid chirp
 
-POST http://localhost:8080/api/validate_chirp
+POST http://localhost:8080/api/chirps
 Content-Type: application/json
 
 {
-  "body": "I had something interesting for breakfast"
+  "body": "I had something interesting for breakfast",
+  "userId": "066d38d9-f774-4889-b356-14a3e761d075"
 }
 
 ###
@@ -40,3 +41,25 @@ Content-Type: application/json
 {
   "body": "clean my dirty fornax mouth"
 }
+
+###
+// Test new user
+
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{
+  "email": "someuser.email.com"
+}
+
+###
+// Test get chirps
+
+GET http://localhost:8080/api/chirps
+Content-Type: application/json
+
+###
+// Test get chirp
+
+GET http://localhost:8080/api/chirps/a06bdb00-7382-48a4-b21a-d37b1cb66909
+Content-Type: application/json
