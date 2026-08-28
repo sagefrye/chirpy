@@ -15,6 +15,13 @@
       "when": 1787192274868,
       "tag": "0001_fresh_hitman",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787790793214,
+      "tag": "0002_bored_winter_soldier",
+      "breakpoints": true
     }
   ]
 }

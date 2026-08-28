@@ -1,9 +1,10 @@
 import { NextFunction, Request, Response } from "express";
 import { config } from "./config.js";
-import { BadRequestError, ForbiddenError, NotFoundError } from "./errors.js"
-import { createUser, deleteUsers } from "./db/queries/users.js";
+import { BadRequestError, ForbiddenError, NotFoundError, UnauthorizedError } from "./errors.js"
+import { createUser, deleteUsers, getUserByEmail } from "./db/queries/users.js";
 import { createChirp, getChirps, getChirp } from "./db/queries/chirps.js";
-import { NewUser, NewChirp, Chirp } from "./db/schema.js";
+import { NewUser, NewChirp, Chirp, User } from "./db/schema.js";
+import { checkPasswordHash, hashPassword } from "./auth.js";
 
 export async function handlerReadiness(req: Request, res: Response): Promise<void> {
     res.set({
@@ -66,19 +67,51 @@ export async function handlerChirp(req: Request, res: Response) {
 export async function handlerCreateUser(req: Request, res: Response, next: NextFunction) {
     const parsedBody = req.body;
 
-    if (!parsedBody || typeof parsedBody.email !== "string") {
+    if (!parsedBody || typeof parsedBody.email !== "string" || typeof parsedBody.password !== "string") {
         throw new BadRequestError("Invalid JSON");
     };
     if (!parsedBody.email) {
         throw new BadRequestError("Email required for new user creation");
     };
+    if (!parsedBody.password) {
+        throw new BadRequestError("Password required for new user creation")
+    };
     try {
         const newUser: NewUser = {
-            email: parsedBody.email
+            email: parsedBody.email,
+            hashedPassword: await hashPassword(parsedBody.password)
         };
-        const respBody = await createUser(newUser);
+        const { hashedPassword, ...userWithoutPassword } = await createUser(newUser);
+        const respBody = userWithoutPassword;
         res.header("Content-Type", "application/json");
         res.status(201).send(JSON.stringify(respBody));
+    } catch (err) {
+        next(err);
+    }
+}
+
+export async function handlerLogin(req: Request, res: Response, next: NextFunction) {
+    const parsedBody = req.body;
+    if (!parsedBody || typeof parsedBody.email !== "string" || typeof parsedBody.password !== "string") {
+        throw new BadRequestError("Invalid JSON");
+    };
+    if (!parsedBody.email) {
+        throw new BadRequestError("Email required for login");
+    };
+    if (!parsedBody.password) {
+        throw new BadRequestError("Password required for login")
+    };
+    try {
+        const user: User = await getUserByEmail(parsedBody.email);
+        const password: string = parsedBody.password;
+        if (await checkPasswordHash(password, user.hashedPassword)) {
+            const { hashedPassword, ...userWithoutPassword } = user;
+            const respBody = userWithoutPassword;
+            res.header("Content-Type", "application/json");
+            res.status(200).send(JSON.stringify(respBody));
+        } else {
+            throw new UnauthorizedError("incorrect email or password");
+        }
     } catch (err) {
         next(err);
     }

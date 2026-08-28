@@ -1,5 +1,5 @@
 import express from "express";
-import { handlerCreateUser, handlerFileserverHits, handlerReadiness, handlerReset, handlerChirp, handlerGetChirps, handlerGetChirp } from "./api.js";
+import { handlerCreateUser, handlerFileserverHits, handlerReadiness, handlerReset, handlerChirp, handlerGetChirps, handlerGetChirp, handlerLogin } from "./api.js";
 import { middlewareLogResponses } from "./middleware.js";
 import { middlewareErrorHandler } from "./errors.js";
 import { config, middlewareMetricsInc } from "./config.js";
@@ -22,6 +22,7 @@ app.post("/api/chirps", handlerChirp);
 app.get("/api/chirps", handlerGetChirps);
 app.get("/api/chirps/:chirpId", handlerGetChirp);
 app.post("/api/users", handlerCreateUser);
+app.post("/api/login", handlerLogin);
 
 app.use("/app", express.static("./src/app"));
 app.use(middlewareLogResponses);
