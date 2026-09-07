@@ -49,7 +49,19 @@ POST http://localhost:8080/api/users
 Content-Type: application/json
 
 {
-  "email": "someuser.email.com"
+  "email": "someuser.email.com",
+  "password": "password"
+}
+
+###
+// Test login
+
+POST http://localhost:8080/api/login
+Content-Type: application/json
+
+{
+  "email": "someuser.email.com",
+  "password": "password"
 }
 
 ###
