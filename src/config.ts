@@ -10,6 +10,7 @@ const migrationConfig: MigrationConfig = {
 type APIConfig = {
     fileserverHits: number;
     platform: string;
+    secret: string;
 };
 
 type DBConfig = {
@@ -25,7 +26,8 @@ type Config = {
 export let config: Config = {
     api: {
         fileserverHits: 0,
-        platform: process.env.PLATFORM!
+        platform: process.env.PLATFORM!,
+        secret: process.env.SECRET!,
     },
     db: {
         dbURL: process.env.DB_URL!,

@@ -4,7 +4,7 @@ import { BadRequestError, ForbiddenError, NotFoundError, UnauthorizedError } fro
 import { createUser, deleteUsers, getUserByEmail } from "./db/queries/users.js";
 import { createChirp, getChirps, getChirp } from "./db/queries/chirps.js";
 import { NewUser, NewChirp, Chirp, User } from "./db/schema.js";
-import { checkPasswordHash, hashPassword } from "./auth.js";
+import { checkPasswordHash, getBearerToken, hashPassword, makeJWT, validateJWT } from "./auth.js";
 
 export async function handlerReadiness(req: Request, res: Response): Promise<void> {
     res.set({
@@ -39,14 +39,17 @@ export async function handlerReset(req: Request, res: Response): Promise<void> {
 export async function handlerChirp(req: Request, res: Response) {
     const profaneList = ["kerfuffle", "sharbert", "fornax"];
     
+    const token = getBearerToken(req);
+    const tokenUser = validateJWT(token, config.api.secret);
+
     const parsedChirp = req.body;
     
-    if (!parsedChirp || typeof parsedChirp.body !== "string" || typeof parsedChirp.userId !== "string") {
+    if (!parsedChirp || typeof parsedChirp.body !== "string") {
         throw new BadRequestError("Invalid JSON");
     };
     if (parsedChirp.body.length > 140) {
         throw new BadRequestError("Chirp is too long. Max length is 140");
-    }; 
+    };
     const splitChirp = parsedChirp.body.split(" ");
     splitChirp.forEach((word: string, index: number) => {
         if (profaneList.includes(word.toLowerCase())) {
@@ -56,7 +59,7 @@ export async function handlerChirp(req: Request, res: Response) {
     const newChirp = splitChirp.join(" ");
     const chirp: NewChirp = {
         "body": newChirp,
-        "userId": parsedChirp.userId
+        "userId": tokenUser
     }
 
     const respBody = await createChirp(chirp);
@@ -106,7 +109,12 @@ export async function handlerLogin(req: Request, res: Response, next: NextFuncti
         const password: string = parsedBody.password;
         if (await checkPasswordHash(password, user.hashedPassword)) {
             const { hashedPassword, ...userWithoutPassword } = user;
-            const respBody = userWithoutPassword;
+            const expiresIn: number = parsedBody.expiresInSeconds ??= 3600;
+            const token = makeJWT(user.id, expiresIn, config.api.secret);
+            const respBody = {
+                ...userWithoutPassword,
+                token: token
+            };
             res.header("Content-Type", "application/json");
             res.status(200).send(JSON.stringify(respBody));
         } else {

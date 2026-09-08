@@ -6,10 +6,10 @@ POST http://localhost:8080/admin/reset
 
 POST http://localhost:8080/api/chirps
 Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaGlycHkiLCJzdWIiOiI0MDY5YjY0MS1iNjQ4LTQ0MGYtOGY4NC1lMDA1ODcxN2UxYTYiLCJpYXQiOjE3ODg4MzM2NDMsImV4cCI6MTc4ODgzNzI0M30.l3cxBOClhrmNGHhDCw0HzMym6Gwayl9fixLHaQuavWQ
 
 {
-  "body": "I had something interesting for breakfast",
-  "userId": "066d38d9-f774-4889-b356-14a3e761d075"
+  "body": "I had something interesting for breakfast"
 }
 
 ###

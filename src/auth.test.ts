@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { makeJWT, validateJWT } from "./auth.js";
+import { type Request } from "express";
+import { makeJWT, validateJWT, getBearerToken } from "./auth.js";
 import { UnauthorizedError } from "./errors.js";
 
 describe("Password Hashing", () => {
@@ -20,5 +21,23 @@ describe("Password Hashing", () => {
 
   it("should return error for the incorrect token", () => {
     expect(() => validateJWT(token1, secret2)).toThrow(UnauthorizedError);
-  })
+  });
 });
+
+describe("Retrieves JWT token from request", () => {
+    const goodRequest = {
+        get: () => "Bearer some-token",
+    } as unknown as Request;
+    const badRequest = {
+        get: () => undefined,
+    } as unknown as Request;
+
+    it("should return the token", () => {
+        const token = getBearerToken(goodRequest);
+        expect(token).toBe("some-token");
+    });
+
+    it("should return error for missing token", () => {
+        expect(() => getBearerToken(badRequest)).toThrow(UnauthorizedError);
+    });
+})
