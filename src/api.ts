@@ -1,10 +1,11 @@
 import { NextFunction, Request, Response } from "express";
 import { config } from "./config.js";
 import { BadRequestError, ForbiddenError, NotFoundError, UnauthorizedError } from "./errors.js"
-import { createUser, deleteUsers, getUserByEmail } from "./db/queries/users.js";
+import { createUser, deleteUsers, getUserByEmail, getUserById, updateUser } from "./db/queries/users.js";
 import { createChirp, getChirps, getChirp } from "./db/queries/chirps.js";
-import { NewUser, NewChirp, Chirp, User } from "./db/schema.js";
-import { checkPasswordHash, getBearerToken, hashPassword, makeJWT, validateJWT } from "./auth.js";
+import { NewUser, User, NewChirp, Chirp, NewRefreshToken, RefreshToken } from "./db/schema.js";
+import { checkPasswordHash, getBearerToken, hashPassword, makeJWT, makeRefreshToken, validateJWT } from "./auth.js";
+import { createRefreshToken, getRefreshTokenById, revokeRefreshTokenById } from "./db/queries/tokens.js";
 
 export async function handlerReadiness(req: Request, res: Response): Promise<void> {
     res.set({
@@ -93,6 +94,39 @@ export async function handlerCreateUser(req: Request, res: Response, next: NextF
     }
 }
 
+export async function handlerUpdateUser(req: Request, res: Response, next: NextFunction) {
+    const parsedBody = req.body;
+    
+    const token = getBearerToken(req);
+    const tokenUser = validateJWT(token, config.api.secret);
+
+    if (!parsedBody || typeof parsedBody.email !== "string" || typeof parsedBody.password !== "string") {
+        throw new BadRequestError("Invalid JSON");
+    };
+    if (!parsedBody.email) {
+        throw new BadRequestError("Email required for user update");
+    };
+    if (!parsedBody.password) {
+        throw new BadRequestError("Password required for user update")
+    };
+    try {
+        const currentUser: User = await getUserById(tokenUser);
+        const updatedUser: User = {
+            id: tokenUser,
+            createdAt: currentUser.createdAt,
+            updatedAt: currentUser.updatedAt,
+            email: parsedBody.email,
+            hashedPassword: await hashPassword(parsedBody.password)
+        };
+        const { hashedPassword, ...userWithoutPassword } = await updateUser(updatedUser);
+        const respBody = userWithoutPassword;
+        res.header("Content-Type", "application/json");
+        res.status(200).send(JSON.stringify(respBody));
+    } catch (err) {
+        next(err);
+    }
+}
+
 export async function handlerLogin(req: Request, res: Response, next: NextFunction) {
     const parsedBody = req.body;
     if (!parsedBody || typeof parsedBody.email !== "string" || typeof parsedBody.password !== "string") {
@@ -109,11 +143,20 @@ export async function handlerLogin(req: Request, res: Response, next: NextFuncti
         const password: string = parsedBody.password;
         if (await checkPasswordHash(password, user.hashedPassword)) {
             const { hashedPassword, ...userWithoutPassword } = user;
-            const expiresIn: number = parsedBody.expiresInSeconds ??= 3600;
-            const token = makeJWT(user.id, expiresIn, config.api.secret);
+            const token = makeJWT(user.id, 3600, config.api.secret);
+            const expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + 60);
+            const refreshToken = makeRefreshToken()
+            const newRefreshToken: NewRefreshToken = {
+                userId: user.id,
+                expiresAt: expiresAt,
+                token: refreshToken
+            };
+            await createRefreshToken(newRefreshToken);
             const respBody = {
                 ...userWithoutPassword,
-                token: token
+                token: token,
+                refreshToken: refreshToken,
             };
             res.header("Content-Type", "application/json");
             res.status(200).send(JSON.stringify(respBody));
@@ -123,6 +166,36 @@ export async function handlerLogin(req: Request, res: Response, next: NextFuncti
     } catch (err) {
         next(err);
     }
+}
+
+export async function handlerRefresh(req: Request, res: Response, next: NextFunction) {
+    const token = getBearerToken(req);
+    const refreshToken: RefreshToken = await getRefreshTokenById(token);
+    const currentDate: Date = new Date()
+    if (refreshToken && refreshToken.expiresAt > currentDate && refreshToken.revokedAt === null) {
+        const token = makeJWT(refreshToken.userId, 3600, config.api.secret);
+        const respBody = {
+            token: token,
+        }
+        res.header("Content-Type", "application/json");
+        res.status(200).send(JSON.stringify(respBody));
+    } else {
+        throw new UnauthorizedError("refresh token invalid");
+    }
+}
+
+export async function handlerRevoke(req: Request, res: Response, next: NextFunction) {
+    const token = getBearerToken(req);
+    const updatedToken = await revokeRefreshTokenById(token);
+    if (updatedToken) {
+        console.log("revoked the following token");
+        console.log(updatedToken);
+        res.header("Content-Type", "application/json");
+        res.status(204).send();
+    } else {
+        throw new UnauthorizedError("refresh token invalid")
+    }
+    
 }
 
 export async function handlerGetChirps(req: Request, res: Response, next: NextFunction) {

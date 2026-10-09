@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken"
 import type { JwtPayload } from "jsonwebtoken";
 import { type Request } from "express";
 import { UnauthorizedError } from "./errors.js";
+import { randomBytes } from "node:crypto";
 
 export async function hashPassword(password: string): Promise<string> {
     const hashedPassword = await argon2.hash(password);
@@ -46,4 +47,9 @@ export function getBearerToken(req: Request): string {
     } else {
         throw new UnauthorizedError("unauthorized");
     }
+}
+
+export function makeRefreshToken(): string {
+    const hexString = randomBytes(32);
+    return hexString.toString("hex")
 }
