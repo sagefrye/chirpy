@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { config } from "./config.js";
 import { BadRequestError, ForbiddenError, NotFoundError, UnauthorizedError } from "./errors.js"
 import { createUser, deleteUsers, getUserByEmail, getUserById, updateUser } from "./db/queries/users.js";
-import { createChirp, getChirps, getChirp } from "./db/queries/chirps.js";
+import { createChirp, getChirps, getChirp, deleteChirp } from "./db/queries/chirps.js";
 import { NewUser, User, NewChirp, Chirp, NewRefreshToken, RefreshToken } from "./db/schema.js";
 import { checkPasswordHash, getBearerToken, hashPassword, makeJWT, makeRefreshToken, validateJWT } from "./auth.js";
 import { createRefreshToken, getRefreshTokenById, revokeRefreshTokenById } from "./db/queries/tokens.js";
@@ -216,4 +216,31 @@ export async function handlerGetChirp(req: Request, res: Response, next: NextFun
     }
     res.header("Content-Type", "application/json");
     res.status(200).send(JSON.stringify(respBody));
+}
+
+export async function handlerDeleteChirp(req: Request, res: Response, next: NextFunction) {
+    if (Array.isArray(req.params.chirpId)) {
+        throw new BadRequestError("chirpId param can only be one value");
+    }
+
+    console.log("checking auth");
+    const token = getBearerToken(req);
+    console.log(token);
+    console.log("validating user");
+    const tokenUser = validateJWT(token, config.api.secret);
+    console.log(tokenUser);
+
+    const chirpId: string = req.params.chirpId;
+    const chirpToDelete: Chirp = await getChirp(chirpId);
+    if (!chirpToDelete) {
+        throw new NotFoundError("chirp not found");
+    }
+    if (tokenUser != chirpToDelete.userId) {
+        throw new ForbiddenError("you are not authorized to delete this chirp");
+    }
+    const deletedChirp: Chirp = await deleteChirp(chirpId);
+    console.log("removed the following chirp:");
+    console.log(deletedChirp);
+    res.header("Content-Type", "application/json");
+    res.status(204).send();
 }
